@@ -1,0 +1,14 @@
+2 Components:
+TwilioManager
+MidiManager
+
+TwilioManager -> twilio hit
+TM: MidiManager -> register phone number to midi channel
+
+MM: Add phone# to dictionary, associate with int midi channel
+
+TM: Gets digit press from twilio
+TM: MM -> noteHit(phone#, digit as string) for some phone number
+
+MM: Look up phone# in dictionary, find corresponding midi channel,
+send noteOn to that channel, wait 250ms sendNoteOff to that channel
