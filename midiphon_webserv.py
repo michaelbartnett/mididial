@@ -29,7 +29,6 @@ class RecurseHandler(tornado.web.RequestHandler):
 application = tornado.web.Application([
     (r"/", MainHandler),
     (r"/recurse", RecurseHandler),
-    (r"/)
 ])
 
 if __name__ == "__main__":
