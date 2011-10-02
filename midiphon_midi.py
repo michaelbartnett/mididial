@@ -93,8 +93,7 @@ class MidiManager(object):
 
 	def sendBitlyLink(self, link):
 		for p in self.oldPlayers:
-			num = p.getPhoneNumber()
-			self.client.sms.messages.create(to=num, from_="13866434928", body=("Listen to your performance at " + link))
+			self.client.sms.messages.create(to=p, from_="13866434928", body=("Listen to your performance at " + link))
 
 		self.oldPlayers.clear()
 		self.startedPlaying = False
@@ -117,12 +116,13 @@ class MidiManager(object):
 		for i in range(0, self.mout.getPortCount()):
 			if self.mout.getPortName(i) == MidiManager.MidiPortName:
 				self.midiPort = i
-				return
+				break
 		
 		if self.midiPort == -1:
 			raise Exception('Epic failure of finding midi channel I just opened.')
 
 		self.client = TwilioRestClient(account='AC221989a2ca0b4be09dbb4ee4df5f35fd', token=api_token)
+		print "SMS Sent!"
 
 		
 

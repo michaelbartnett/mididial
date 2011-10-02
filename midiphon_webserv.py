@@ -41,7 +41,7 @@ class MainHandler(tornado.web.RequestHandler):
 	def post(self):
 		global midiManager
 		r = twiml.Response()
-		r.say("Welcome to MIDIphon.")
+		r.say("Welcome to mideefawn.")
 		phoneNumber = self.request.arguments["From"][0]
 		if midiManager.addPlayer(phoneNumber) == False:
 			r.say("All channels full.")
