@@ -5,6 +5,7 @@ from midiutil.MidiFile import MIDIFile
 import time
 import uuid
 import ftplib
+from bitly_api import Connection
 
 random.seed()
 
@@ -17,7 +18,9 @@ def uploadMidiFile(filename):
 	sendBitlyLink(link)
 
 def getBitlyLink(url):
-	pass
+	connect = Connection("midiphon", "R_b63c0aa52c923c17f66a1048e134a9a7")
+	short = connect.shorten(url)
+	return short['url']
 
 def sendBitlyLink(link):
 	pass
