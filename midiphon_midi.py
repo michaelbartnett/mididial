@@ -11,6 +11,8 @@ from twilio.rest import TwilioRestClient
 random.seed()
 # twilioClient = TwilioRestClient()
 
+api_token='11871f7c31bc58785f2647979cbcc823'
+
 class PhoneMusician(object):
 	def __init__(self, phoneNumber, midiChannel):
 		self.midiChannel = midiChannel
@@ -92,11 +94,15 @@ class MidiManager(object):
 	def sendBitlyLink(self, link):
 		for p in self.oldPlayers:
 			num = p.getPhoneNumber()
+			self.client.sms.messages.create(to=num, from_="13866434928", body=("Listen to your performance at " + link))
+
 		self.oldPlayers.clear()
 		self.startedPlaying = False
 
 
 	def __init__(self):
+		global api_token
+
 		self.midiChannels = {}
 		self.oldPlayers = {}
 		self.availableChannels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]#, 11, 12, 13, 14 ,15, 16]
@@ -115,6 +121,9 @@ class MidiManager(object):
 		
 		if self.midiPort == -1:
 			raise Exception('Epic failure of finding midi channel I just opened.')
+
+		self.client = TwilioRestClient(account='AC221989a2ca0b4be09dbb4ee4df5f35fd', token=api_token)
+
 		
 
 
