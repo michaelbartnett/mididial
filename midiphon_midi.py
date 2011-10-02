@@ -9,19 +9,25 @@ from bitly_api import Connection
 from twilio.rest import TwilioRestClient
 
 random.seed()
-twilioClient = TwilioRestClient()
+# twilioClient = TwilioRestClient()
 
 def uploadMidiFile(filename):
+	print "Uploading midi file"
 	ftp = ftplib.FTP('midiphon.bartnett.com', 'midiphon_uploader', 'grantophone')
-	with mf as open(filename):
-		ftp.storbinary('STOR ' + filename, mf)
+	mf = open(filename)
+	ftp.storbinary('STOR midiphon.bartnett.com/' + filename, mf)
+	mf.close()
+	print "Done storing midi file"
 	
-	link = getBitlyLink()
+	link = getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
 	sendBitlyLink(link)
 
 def getBitlyLink(url):
+	print "Opening bitly connection"
 	connect = Connection("midiphon", "R_b63c0aa52c923c17f66a1048e134a9a7")
+	print "Shortening URL"
 	short = connect.shorten(url)
+	print "Done shortening URL"
 	return short['url']
 
 def sendBitlyLink(link):
@@ -48,7 +54,7 @@ class PhoneMusician(object):
 			# '#' : 79,
 		}
 	
-	def getMidiChannel():
+	def getMidiChannel(self):
 		return self.midiChannel
 	
 	def getNoteOnMessage(self, digit):
@@ -94,7 +100,7 @@ class MidiManager(object):
 		self.midiPort = -1
 		self.startedPlaying = False
 		self.initialTime = time.clock()
-		self.twilioClient = TwilioClient()
+		# self.twilioClient = TwilioClient()
 		for i in range(0, self.mout.getPortCount()):
 			if self.mout.getPortName(i) == MidiManager.MidiPortName:
 				self.midiPort = i
@@ -109,7 +115,9 @@ class MidiManager(object):
 		if not self.startedPlaying:
 			self.startedPlaying = True
 			self.midiFile = MIDIFile(10)
-			self.midiFile.addTempo(0, 0, 60)
+			for i in range(0, 10):
+				self.midiFile.addTrackName(i, 0, str(i+1))
+				self.midiFile.addTempo(i, 0, 60)
 
 		if self.midiChannels.has_key(phone):
 			return True
@@ -130,9 +138,11 @@ class MidiManager(object):
 			self.availableChannels.append(channelNumber)
 			self.oldPlayers[phone] = player
 			if len(self.midiChannels) < 1:
-				fn = str(uuid.uuid1())
-				with f as open(fn, 'wb'):
-					self.midiFile.writeFile(f)
+				fn = str(uuid.uuid1()) + '.mid'
+				f = open(fn, 'wb')
+				self.midiFile.writeFile(f)
+				f.close()
+				uploadMidiFile(fn)
 				
 	
 	def playNote(self, phone, digit):
@@ -141,8 +151,8 @@ class MidiManager(object):
 			msg = player.getNoteOnMessage(digit)
 			if msg:
 				noteLength = 1.5
-				elapsedTime = time.clock() - self.initialTime
-				self.midiFile.addNote(player.getMidiChannel(), player.getMidiChannel(), msg.getNoteNumber(), elapsedTime, noteLength, 127)
+				elapsedTime = (time.clock() - self.initialTime) * 60.0
+				self.midiFile.addNote(player.getMidiChannel() - 1, player.getMidiChannel(), msg.getNoteNumber(), elapsedTime, noteLength, 127)
 				print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
 				self.mout.sendMessage(msg)
 				t = threading.Timer(noteLength, self.stopNote, [phone, digit])
