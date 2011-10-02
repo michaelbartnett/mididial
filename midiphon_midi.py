@@ -6,8 +6,10 @@ import time
 import uuid
 import ftplib
 from bitly_api import Connection
+from twilio.rest import TwilioRestClient
 
 random.seed()
+twilioClient = TwilioRestClient()
 
 def uploadMidiFile(filename):
 	ftp = ftplib.FTP('midiphon.bartnett.com', 'midiphon_uploader', 'grantophone')
@@ -57,6 +59,9 @@ class PhoneMusician(object):
 			self.octaveUp(1)
 			return None
 		return rtmidi.MidiMessage.noteOn(self.midiChannel, self.noteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier, 127)
+	
+	def getPhoneNumber():
+		return self.phoneNumber
 
 	def getNoteOffMessage(self, digit):
 		if digit == '*' or digit == '#':
@@ -89,6 +94,7 @@ class MidiManager(object):
 		self.midiPort = -1
 		self.startedPlaying = False
 		self.initialTime = time.clock()
+		self.twilioClient = TwilioClient()
 		for i in range(0, self.mout.getPortCount()):
 			if self.mout.getPortName(i) == MidiManager.MidiPortName:
 				self.midiPort = i
