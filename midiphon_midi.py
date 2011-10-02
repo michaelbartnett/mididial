@@ -67,7 +67,7 @@ class MidiManager(object):
 	def addPlayer(self, phone):
 		channelCount = len(self.availableChannels)
 		if channelCount > 0:
-			self.midiChannels[phone] = PhoneMusician(phone, self.availableChannels.pop(random.randint(1, 16)))
+			self.midiChannels[phone] = PhoneMusician(phone, self.availableChannels.pop(random.randint(1, channelCount)))
 			return True
 		
 		return False
@@ -75,12 +75,16 @@ class MidiManager(object):
 	
 	def playNote(self, phone, digit):
 		if self.midiChannels.has_key(phone):
-			self.mout.sendMessage(self.midiChannels[phone].getNoteOnMessage(digit))
-			t = threading.Timer(1.0, self.stopNote, [phone, digit])
+			msg = self.midiChannels[phone].getNoteOnMessage(digit)
+			print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
+			self.mout.sendMessage(msg)
+			t = threading.Timer(2.0, self.stopNote, [phone, digit])
 			t.start()
 
 			return True
 
 
 	def stopNote(self, phone, digit):
-		self.mout.sendMessage(self.midiChannels[phone].getNoteOffMessage(digit))
+		msg = self.midiChannels[phone].getNoteOffMessage(digit)
+		print "Sending midi message: channel={0} note={1}".format(msg.getChannel(), msg.getNoteNumber())
+		self.mout.sendMessage(msg)
