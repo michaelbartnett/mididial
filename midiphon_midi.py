@@ -25,8 +25,11 @@ class PhoneMusician(object):
 			'#' : 79,
 		}
 	
+	def getMidiChannel():
+		return self.midiChannel
+	
 	def getNoteOnMessage(self, digit):
-		return rtmidi.MidiMessage.noteOn(1, self.noteMap[digit] + self.octaveModifier * 8 + self.semitoneModifier, 116)
+		return rtmidi.MidiMessage.noteOn(1, self.noteMap[digit] + self.octaveModifier * 8 + self.semitoneModifier, 127)
 
 	def getNoteOffMessage(self, digit):
 		return rtmidi.MidiMessage.noteOff(1, self.noteMap[digit] + self.octaveModifier * 8 + self.semitoneModifier)
@@ -65,12 +68,23 @@ class MidiManager(object):
 
 
 	def addPlayer(self, phone):
+		if self.midiChannels.has_key(phone):
+			return True
+		
+		
 		channelCount = len(self.availableChannels)
 		if channelCount > 0:
-			self.midiChannels[phone] = PhoneMusician(phone, self.availableChannels.pop(random.randint(1, channelCount)))
+			self.midiChannels[phone] = PhoneMusician(phone, self.availableChannels.pop(random.randint(1, channelCount) - 1))
 			return True
 		
 		return False
+	
+	def removePlayer(self, phone):
+		if self.midiChannels.has_key(phone):
+			player = self.midiChannels.pop(phone)
+			channelNumber = player.midiChannel
+			print "Removing player {0} with midi channel {1}".format(phone, channelNumber)
+			self.availableChannels.append(channelNumber)
 
 	
 	def playNote(self, phone, digit):
@@ -78,7 +92,7 @@ class MidiManager(object):
 			msg = self.midiChannels[phone].getNoteOnMessage(digit)
 			print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
 			self.mout.sendMessage(msg)
-			t = threading.Timer(2.0, self.stopNote, [phone, digit])
+			t = threading.Timer(1.25, self.stopNote, [phone, digit])
 			t.start()
 
 			return True

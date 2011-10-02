@@ -9,6 +9,19 @@ myglob = 42
 
 midiManager = MidiManager()
 
+def printget(handler):
+	print "Got a get in RecurseHandler!"
+	handler.write("""
+	Got request!<br /><br />
+	Path = '{0}'<br /><br />
+	Query = '{1}'<br /><br />
+	Headers = '{2}'<br /><br />
+	Arguments = '{3}'<br /><br />
+	Body = '{4}'<br /><br />
+	""".format(handler.request.path, handler.request.query, handler.request.headers, handler.request.arguments, handler.request.body))
+
+	print "Done with RecurseHandler."
+
 
 class MainHandler(tornado.web.RequestHandler):
 
@@ -71,12 +84,29 @@ class RecurseHandler(tornado.web.RequestHandler):
 		print "Done with RecurseHandler."
 
 
+class StatusHandler(tornado.web.RequestHandler):
+	def post(self):
+		global midiManager
+		callstatus = self.request.arguments['CallStatus'][0]
+		print "Got call status callback!"
+		if callstatus == 'completed':
+			print "Got end call callback!"
+			phoneNumber = self.request.arguments['From'][0]
+			midiManager.removePlayer(phoneNumber)
+		else:
+			print 'Got call status: ' + callstatus
+	
+	def get(self):
+		printget(self)
+
+
 
 
 
 application = tornado.web.Application([
     (r"/entry", MainHandler),
     (r"/recurse", RecurseHandler),
+    (r"/status", StatusHandler),
 ])
 
 if __name__ == "__main__":
