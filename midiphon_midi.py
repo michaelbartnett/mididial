@@ -11,28 +11,6 @@ from twilio.rest import TwilioRestClient
 random.seed()
 # twilioClient = TwilioRestClient()
 
-def uploadMidiFile(filename):
-	print "Uploading midi file"
-	ftp = ftplib.FTP('midiphon.bartnett.com', 'midiphon_uploader', 'grantophone')
-	mf = open(filename)
-	ftp.storbinary('STOR midiphon.bartnett.com/' + filename, mf)
-	mf.close()
-	print "Done storing midi file"
-	
-	link = getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
-	sendBitlyLink(link)
-
-def getBitlyLink(url):
-	print "Opening bitly connection"
-	connect = Connection("midiphon", "R_b63c0aa52c923c17f66a1048e134a9a7")
-	print "Shortening URL"
-	short = connect.shorten(url)
-	print "Done shortening URL"
-	return short['url']
-
-def sendBitlyLink(link):
-	pass
-
 class PhoneMusician(object):
 	def __init__(self, phoneNumber, midiChannel):
 		self.midiChannel = midiChannel
@@ -89,6 +67,35 @@ class PhoneMusician(object):
 
 class MidiManager(object):
 	MidiPortName = "MIDIPHON"
+
+
+	def uploadMidiFile(self, filename):
+		print "Uploading midi file"
+		ftp = ftplib.FTP('midiphon.bartnett.com', 'midiphon_uploader', 'grantophone')
+		mf = open(filename)
+		ftp.storbinary('STOR midiphon.bartnett.com/' + filename, mf)
+		mf.close()
+		print "Done storing midi file"
+		
+		link = self.getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
+		print 'GOT LINK: ' + link
+		self.sendBitlyLink(link)
+
+	def getBitlyLink(self, url):
+		print "Opening bitly connection"
+		connect = Connection("midiphon", "R_b63c0aa52c923c17f66a1048e134a9a7")
+		print "Shortening URL"
+		short = connect.shorten(url)
+		print "Done shortening URL"
+		return short['url']
+
+	def sendBitlyLink(self, link):
+		for p in self.oldPlayers:
+			num = p.getPhoneNumber()
+		self.oldPlayers.clear()
+		self.startedPlaying = False
+
+
 	def __init__(self):
 		self.midiChannels = {}
 		self.oldPlayers = {}
@@ -142,7 +149,7 @@ class MidiManager(object):
 				f = open(fn, 'wb')
 				self.midiFile.writeFile(f)
 				f.close()
-				uploadMidiFile(fn)
+				self.uploadMidiFile(fn)
 				
 	
 	def playNote(self, phone, digit):
