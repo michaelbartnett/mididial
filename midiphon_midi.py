@@ -13,7 +13,7 @@ twilioClient = TwilioRestClient()
 
 def uploadMidiFile(filename):
 	ftp = ftplib.FTP('midiphon.bartnett.com', 'midiphon_uploader', 'grantophone')
-	with mf = open(filename):
+	with mf as open(filename):
 		ftp.storbinary('STOR ' + filename, mf)
 	
 	link = getBitlyLink()
@@ -131,7 +131,7 @@ class MidiManager(object):
 			self.oldPlayers[phone] = player
 			if len(self.midiChannels) < 1:
 				fn = str(uuid.uuid1())
-				with f = open(fn, 'wb'):
+				with f as open(fn, 'wb'):
 					self.midiFile.writeFile(f)
 				
 	
