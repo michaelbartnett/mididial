@@ -3,6 +3,7 @@
 import tornado.web
 import tornado.ioloop
 from midiphon_midi import MidiManager
+from twilio import *
 
 myglob = 42
 
@@ -21,13 +22,20 @@ class MainHandler(tornado.web.RequestHandler):
 		print "Done with MainHandler."
 	
 	def post(self):
-		self.write(twilio_handler.setup(self.request))
+		r = twiml.Response()
+		phoneNumber = self.request.arguments["From"]
+		if MidiManager.addPlayer(phoneNumber) == False:
+			r.say("All channels full.")
+			r.hangup()
+			self.write(r.toxml())
+		else:
+			r.say("Welcome to MIDIphon.")
+
 
 
 class RecurseHandler(tornado.web.RequestHandler):
-	def post(self, *args, **kwargs):
-		self.request
-		self.write("We are recursing")
+	def post(self):
+
 	
 	def get(self):
 		global myglob
