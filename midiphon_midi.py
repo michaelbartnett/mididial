@@ -21,29 +21,37 @@ class PhoneMusician(object):
 			'8' : 72,
 			'9' : 74,
 			'0' : 76,
-			'*' : 77,
-			'#' : 79,
+			# '*' : 77,
+			# '#' : 79,
 		}
 	
 	def getMidiChannel():
 		return self.midiChannel
 	
 	def getNoteOnMessage(self, digit):
-		return rtmidi.MidiMessage.noteOn(1, self.noteMap[digit] + self.octaveModifier * 8 + self.semitoneModifier, 127)
+		if digit == '*':
+			self.octaveUp(1)
+			return None
+		elif digit == '#':
+			self.octaveDown(1)
+			return None
+		return rtmidi.MidiMessage.noteOn(self.midiChannel, self.noteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier, 127)
 
 	def getNoteOffMessage(self, digit):
-		return rtmidi.MidiMessage.noteOff(1, self.noteMap[digit] + self.octaveModifier * 8 + self.semitoneModifier)
+		if digit == '*' or digit == '#':
+			return None
+		return rtmidi.MidiMessage.noteOff(self.midiChannel, self.noteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier)
 
-	def octaveUp(amount):
+	def octaveUp(self, amount):
 		self.octaveModifier += amount
 	
-	def octaveDown(amount):
+	def octaveDown(self, amount):
 		self.octaveModifier -= amount
 	
-	def semitoneUp(amount):
+	def semitoneUp(self, amount):
 		self.semitoneModifier += amount
 
-	def semitoneDown(amount):
+	def semitoneDown(self, amount):
 		self.semitoneModifier -= amount
 			
 
@@ -51,7 +59,8 @@ class MidiManager(object):
 	MidiPortName = "MIDIPHON"
 	def __init__(self):
 		self.midiChannels = {}
-		self.availableChannels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ,15, 16]
+		self.oldPlayers = {}
+		self.availableChannels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]#, 11, 12, 13, 14 ,15, 16]
 		self.mout = rtmidi.RtMidiOut()
 		self.min = rtmidi.RtMidiIn()
 		self.min.openVirtualPort(MidiManager.MidiPortName)
@@ -85,20 +94,31 @@ class MidiManager(object):
 			channelNumber = player.midiChannel
 			print "Removing player {0} with midi channel {1}".format(phone, channelNumber)
 			self.availableChannels.append(channelNumber)
+			self.oldPlayers[phone] = player
 
 	
 	def playNote(self, phone, digit):
 		if self.midiChannels.has_key(phone):
 			msg = self.midiChannels[phone].getNoteOnMessage(digit)
-			print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
-			self.mout.sendMessage(msg)
-			t = threading.Timer(1.25, self.stopNote, [phone, digit])
-			t.start()
+			if msg:
+				print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
+				self.mout.sendMessage(msg)
+				t = threading.Timer(3.0, self.stopNote, [phone, digit])
+				t.start()
 
 			return True
 
 
 	def stopNote(self, phone, digit):
-		msg = self.midiChannels[phone].getNoteOffMessage(digit)
-		print "Sending midi message: channel={0} note={1}".format(msg.getChannel(), msg.getNoteNumber())
-		self.mout.sendMessage(msg)
+		if self.midiChannels.has_key(phone):
+			player = self.midiChannels[phone]
+		elif self.oldPlayers.has_key(phone):
+			player = self.oldPlayers[phone]
+		else:
+			player = None
+		
+		if player:
+			msg = player.getNoteOffMessage(digit)
+			if msg:
+				print "Sending midi message: channel={0} note={1}".format(msg.getChannel(), msg.getNoteNumber())
+				self.mout.sendMessage(msg)
