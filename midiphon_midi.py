@@ -7,11 +7,14 @@ import uuid
 import ftplib
 from bitly_api import Connection
 from twilio.rest import TwilioRestClient
+import os
 
 random.seed()
 # twilioClient = TwilioRestClient()
 
-api_token='11871f7c31bc58785f2647979cbcc823'
+twilio_api_token = os.environ["TWILIO_API_TOKEN"]
+twilio_app_sid = os.environ["TWILIO_APP_SID"]
+bitly_api_token = os.environ["BITLY_API_TOKEN"]
 
 class PhoneMusician(object):
 	def __init__(self, phoneNumber, midiChannel):
@@ -82,10 +85,12 @@ class MidiManager(object):
 		link = self.getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
 		print 'GOT LINK: ' + link
 		self.sendBitlyLink(link)
+		print "SMS Sent!"
 
 	def getBitlyLink(self, url):
+		global bitly_api_token
 		print "Opening bitly connection"
-		connect = Connection("midiphon", "R_b63c0aa52c923c17f66a1048e134a9a7")
+		connect = Connection("midiphon", bitly_api_token)
 		print "Shortening URL"
 		short = connect.shorten(url)
 		print "Done shortening URL"
@@ -100,7 +105,8 @@ class MidiManager(object):
 
 
 	def __init__(self):
-		global api_token
+		global twilio_api_token
+		global twilio_app_sid
 
 		self.midiChannels = {}
 		self.oldPlayers = {}
@@ -121,8 +127,7 @@ class MidiManager(object):
 		if self.midiPort == -1:
 			raise Exception('Epic failure of finding midi channel I just opened.')
 
-		self.client = TwilioRestClient(account='AC221989a2ca0b4be09dbb4ee4df5f35fd', token=api_token)
-		print "SMS Sent!"
+		self.client = TwilioRestClient(account=twilio_app_sid, token=twilio_api_token)
 
 		
 
@@ -142,6 +147,7 @@ class MidiManager(object):
 		channelCount = len(self.availableChannels)
 		if channelCount > 0:
 			self.midiChannels[phone] = PhoneMusician(phone, self.availableChannels.pop(random.randint(1, channelCount) - 1))
+			print "Adding player#" + phone
 			return True
 		
 		return False
