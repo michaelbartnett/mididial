@@ -21,6 +21,14 @@ def printget(handler):
 
     print "Done with RecurseHandler" + handler.__class__.__name__
 
+def setup(filename):
+    params = {'twilio_number': raw_input("enter phone number: "), 'twilio_sid': raw_input("enter twilio app SID: "), 'twilio_token': raw_input("enter twilio authentication token: "), 'bitly_token': raw_input("enter bitly authentication token (OPTIONAL - press enter to skip): ")}
+
+    config_file = open(filename, 'wb')
+    print("saving configuration...")
+    for i in params: config_file.write(i + ": " + params[i] + "\n")
+    print("saved to " + filename)
+    config_file.close()
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -103,7 +111,6 @@ if __name__ == "__main__":
 
     if (options.numChannels):
         midiManager.setNumChannels(options)
-    
 
     application = tornado.web.Application([
         (r"/entry", MainHandler),
