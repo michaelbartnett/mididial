@@ -7,35 +7,49 @@ import uuid
 import ftplib
 from bitly_api import Connection
 from twilio.rest import TwilioRestClient
-import os
 
 random.seed()
-# twilioClient = TwilioRestClient()
 
-twilio_api_token = os.environ["TWILIO_API_TOKEN"]
-twilio_app_sid = os.environ["TWILIO_APP_SID"]
-bitly_api_token = os.environ["BITLY_API_TOKEN"]
+
+class MidiPhonConfig(object):
+    """Configuration object class for midiphon"""
+
+    TwilioTokenString = "TWILIO_API_TOKEN"
+    TwilioSidString   = "TWILIO_APP_SID"
+    BitlyTokenString  = "BITLY_API_TOKEN"
+
+    def __init__(self):
+        super(MidiPhonConfig, self).__init__()
+        self.TwilioApiToken = ''
+        self.TwilioAppSid   = ''
+        self.BitlyApiToken  = ''
+        self.numChannels    = 16{}
+        
+
 
 class PhoneMusician(object):
+
+    NoteMap = {
+        '1' : 60,
+        '2' : 62,
+        '3' : 64,
+        '4' : 65,
+        '5' : 67,
+        '6' : 69,
+        '7' : 71,
+        '8' : 72,
+        '9' : 74,
+        '0' : 76,
+        # '*' : 77,
+        # '#' : 79,
+    }
+
     def __init__(self, phoneNumber, midiChannel):
+        super(PhoneMusician, self).__init__()
         self.midiChannel = midiChannel
         self.phoneNumber = phoneNumber
         self.octaveModifier = 0
         self.semitoneModifier = 0
-        self.noteMap = {
-            '1' : 60,
-            '2' : 62,
-            '3' : 64,
-            '4' : 65,
-            '5' : 67,
-            '6' : 69,
-            '7' : 71,
-            '8' : 72,
-            '9' : 74,
-            '0' : 76,
-            # '*' : 77,
-            # '#' : 79,
-        }
     
     def getMidiChannel(self):
         return self.midiChannel
@@ -47,7 +61,7 @@ class PhoneMusician(object):
         elif digit == '#':
             self.octaveUp(1)
             return None
-        return rtmidi.MidiMessage.noteOn(self.midiChannel, self.noteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier, 127)
+        return rtmidi.MidiMessage.noteOn(self.midiChannel, PhoneMusician.NoteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier, 127)
     
     def getPhoneNumber():
         return self.phoneNumber
@@ -55,7 +69,7 @@ class PhoneMusician(object):
     def getNoteOffMessage(self, digit):
         if digit == '*' or digit == '#':
             return None
-        return rtmidi.MidiMessage.noteOff(self.midiChannel, self.noteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier)
+        return rtmidi.MidiMessage.noteOff(self.midiChannel, PhoneMusician.NoteMap[digit] + self.octaveModifier * 12 + self.semitoneModifier)
 
     def octaveUp(self, amount):
         self.octaveModifier += amount
@@ -72,6 +86,34 @@ class PhoneMusician(object):
 
 class MidiManager(object):
     MidiPortName = "MIDIPHON"
+
+    def __init__(self, midiPhonConfig):
+        super(MidiManager, self).__init__()
+
+        self.midiPhonConfig = midiPhonConfig
+        self.midiChannels = {}
+        self.oldPlayers = {}
+        self.midiPhonConfig.numChannels = numChannels
+        self.availableChannels = range(1, self.midiPhonConfig.numChannels + 1)
+        self.mout = rtmidi.RtMidiOut()
+        self.min = rtmidi.RtMidiIn()
+        self.min.openVirtualPort(MidiManager.MidiPortName)
+        self.mout.openVirtualPort(MidiManager.MidiPortName)
+        self.midiPort = -1
+        self.startedPlaying = False
+        self.initialTime = time.clock()
+        for i in range(0, self.mout.getPortCount()):
+            if self.mout.getPortName(i) == MidiManager.MidiPortName:
+                self.midiPort = i
+                break
+        
+        if self.midiPort == -1:
+            raise Exception('Epic failure of finding midi channel I just opened.')
+
+        self.twilio_client = TwilioRestClient(
+            account=self.midiPhonConfig.TwilioAppSid,
+            token=self.midiPhonConfig.TwilioApiToken
+        )
 
 
     def uploadMidiFile(self, filename):
@@ -103,31 +145,6 @@ class MidiManager(object):
         self.oldPlayers.clear()
         self.startedPlaying = False
 
-
-    def __init__(self, numChannels):
-        global twilio_api_token
-        global twilio_app_sid
-
-        self.midiChannels = {}
-        self.oldPlayers = {}
-        self.availableChannels = range(1, numChannels + 1)
-        self.mout = rtmidi.RtMidiOut()
-        self.min = rtmidi.RtMidiIn()
-        self.min.openVirtualPort(MidiManager.MidiPortName)
-        self.mout.openVirtualPort(MidiManager.MidiPortName)
-        self.midiPort = -1
-        self.startedPlaying = False
-        self.initialTime = time.clock()
-        for i in range(0, self.mout.getPortCount()):
-            if self.mout.getPortName(i) == MidiManager.MidiPortName:
-                self.midiPort = i
-                break
-        
-        if self.midiPort == -1:
-            raise Exception('Epic failure of finding midi channel I just opened.')
-
-        self.twilio_client = TwilioRestClient(account=twilio_app_sid, token=twilio_api_token)
-
     
     def setNumMidiChannels(numChannels):
         if not self.startedPlaying:
@@ -143,9 +160,9 @@ class MidiManager(object):
     def addPlayer(self, phone):
         if not self.startedPlaying:
             self.startedPlaying = True
-            self.midiFile = MIDIFile(10)
-            for i in range(0, 10):
-                self.midiFile.addTrackName(i, 0, str(i+1))
+            self.midiFile = MIDIFile(self.midiPhonConfig.numChannels)
+            for i in range(0, self.midiPhonConfig.numChannels):
+                self.midiFile.addTrackName(i, 0, str(i))
                 self.midiFile.addTempo(i, 0, 60)
 
         if self.midiChannels.has_key(phone):
@@ -182,11 +199,16 @@ class MidiManager(object):
             if msg:
                 noteLength = 1.5
                 elapsedTime = (time.clock() - self.initialTime) * 60.0
-                self.midiFile.addNote(player.getMidiChannel() - 1, player.getMidiChannel(), msg.getNoteNumber(), elapsedTime, noteLength, 127)
-                print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
-                self.mout.sendMessage(msg)
-                t = threading.Timer(noteLength, self.stopNote, [phone, digit])
-                t.start()
+                try:
+                    self.midiFile.addNote(player.getMidiChannel() - 1, player.getMidiChannel() - 1, msg.getNoteNumber(), elapsedTime, noteLength, 127)
+                    print "Sending midi message: channel={0} note={1} vel={2}".format(msg.getChannel(), msg.getNoteNumber(), msg.getVelocity())
+                    self.mout.sendMessage(msg)
+                    t = threading.Timer(noteLength, self.stopNote, [phone, digit])
+                    t.start()
+                except IndexError:
+                    print 'Error adding midi note'
+                    print 'PlayerInfo: MidiChannel: {0} MidiNote: {1}'.format(player.getMidiChannel(), msg.getNoteNumber())
+                    return False
 
             return True
 

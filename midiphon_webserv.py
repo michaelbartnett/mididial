@@ -2,10 +2,11 @@
 
 import tornado.web
 import tornado.ioloop
-from midiphon_midi import MidiManager
+from midiphon_midi import MidiManager, MidiPhonConfig
 from twilio import twiml
+import os
 
-midiManager = MidiManager(16)
+midiManager = None
 
 def printget(handler):
     '''Just prints out request info, easier to check if localtunnel's working.'''
@@ -77,6 +78,23 @@ class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         printget(self)
 
+class RootHandler(tornado.web.RequestHandler):
+    def get(self, *args, **kwargs):
+        self.write('<h1>Hello!</h1>')
+        self.write('<p>You have made a request to {0}</p>'.format(self.request.path))
+        self.write('<p>Here are the *args:</p>')
+        self.write('<ul>')
+        for a in args:
+            self.write('<li>{0}</li>'.format(a))
+        self.write('</ul>')
+        self.write('<p>Here are the **kwargs:</p>')
+        self.write('<ul>')
+        for k in kwargs:
+            self.write('<li>{0}</li>'.format(k))
+        self.write('</ul>')
+
+
+
 if __name__ == "__main__":
     import sys
     import optparse
@@ -100,15 +118,20 @@ if __name__ == "__main__":
             sys.stdout.write(a + ' ')
         print ''
         sys.exit(1)
-
-    if (options.numChannels):
-        midiManager.setNumChannels(options)
+    
+    conf = MidiPhonConfig()
+    conf.TwilioApiToken = os.environ[MidiPhonConfig.TwilioTokenString]
+    conf.TwilioAppSid   = os.environ[MidiPhonConfig.TwilioSidString]
+    conf.BitlyApiToken  = os.environ[MidiPhonConfig.BitlyTokenString]
+    conf.numChannels    = options.numChannels
+    midiManager = MidiManager(conf)
     
 
     application = tornado.web.Application([
         (r"/entry", MainHandler),
         (r"/recurse", RecurseHandler),
         (r"/status", StatusHandler),
+        (r"/(.*)", RootHandler),
     ])
 
     application.listen(options.port)
