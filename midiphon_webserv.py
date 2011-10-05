@@ -22,6 +22,29 @@ def printget(handler):
 
     print "Done with RecurseHandler" + handler.__class__.__name__
 
+def setup(filename):
+
+    params = {
+        # 'twilio_number': raw_input("enter phone number: "),
+        'twilio_sid'   : raw_input("enter twilio app SID: "),
+        'twilio_token' : raw_input("enter twilio authentication token: "), 
+        'bitly_token'  : raw_input("enter bitly authentication token (OPTIONAL - press enter to skip): "),
+        'num_channels' : raw_input("enter the number of midi channels to use (OPTIONAL - press enter to skip): "),
+    }
+    if not params['num_channels']: params['num_channels'] = '16'
+
+    config_file = open(filename, 'wb')
+    print("saving configuration...")
+    for i in params: config_file.write(i + ": " + params[i] + "\n")
+    print("saved to " + filename)
+    config_file.close()
+    config_object = MidiPhonConfig()
+    config_object.TwilioAppSid = params['twilio_sid']
+    config_object.TwilioApiToken = params['twilio_token']
+    config_object.BitlyApiToken = params['bitly_token']
+    config_object.NumMidiChannels = int(params['num_channels'])
+
+    return config_object
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -119,13 +142,14 @@ if __name__ == "__main__":
         print ''
         sys.exit(1)
     
-    conf = MidiPhonConfig()
-    conf.TwilioApiToken = os.environ[MidiPhonConfig.TwilioTokenString]
-    conf.TwilioAppSid   = os.environ[MidiPhonConfig.TwilioSidString]
-    conf.BitlyApiToken  = os.environ[MidiPhonConfig.BitlyTokenString]
-    conf.numChannels    = options.numChannels
+
+    conf = setup('midiphon.conf')
+    # conf = MidiPhonConfig()
+    # conf.TwilioApiToken = os.environ[MidiPhonConfig.TwilioTokenString]
+    # conf.TwilioAppSid   = os.environ[MidiPhonConfig.TwilioSidString]
+    # conf.BitlyApiToken  = os.environ[MidiPhonConfig.BitlyTokenString]
+    # conf.numChannels    = options.numChannels
     midiManager = MidiManager(conf)
-    
 
     application = tornado.web.Application([
         (r"/entry", MainHandler),
@@ -136,4 +160,12 @@ if __name__ == "__main__":
 
     application.listen(options.port)
     print 'Listening on port {0}'.format(options.port)
-    tornado.ioloop.IOLoop.instance().start()
+    try:
+        tornado.ioloop.IOLoop.instance().start()
+    except KeyboardInterrupt:
+        print
+        print 'User quit.'
+        tornado.ioloop.IOLoop.instance().stop()
+    
+    midiManager.releaseMidi()
+    sys.exit(0)

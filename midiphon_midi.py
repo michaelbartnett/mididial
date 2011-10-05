@@ -20,10 +20,10 @@ class MidiPhonConfig(object):
 
     def __init__(self):
         super(MidiPhonConfig, self).__init__()
-        self.TwilioApiToken = ''
-        self.TwilioAppSid   = ''
-        self.BitlyApiToken  = ''
-        self.numChannels    = 16{}
+        self.TwilioApiToken  = ''
+        self.TwilioAppSid    = ''
+        self.BitlyApiToken   = ''
+        self.NumMidiChannels = 16
         
 
 
@@ -93,27 +93,28 @@ class MidiManager(object):
         self.midiPhonConfig = midiPhonConfig
         self.midiChannels = {}
         self.oldPlayers = {}
-        self.midiPhonConfig.numChannels = numChannels
-        self.availableChannels = range(1, self.midiPhonConfig.numChannels + 1)
+        self.availableChannels = range(1, self.midiPhonConfig.NumMidiChannels + 1)
         self.mout = rtmidi.RtMidiOut()
-        self.min = rtmidi.RtMidiIn()
-        self.min.openVirtualPort(MidiManager.MidiPortName)
+        # self.min = rtmidi.RtMidiIn()
+        # self.min.openVirtualPort(MidiManager.MidiPortName)
         self.mout.openVirtualPort(MidiManager.MidiPortName)
-        self.midiPort = -1
         self.startedPlaying = False
         self.initialTime = time.clock()
-        for i in range(0, self.mout.getPortCount()):
-            if self.mout.getPortName(i) == MidiManager.MidiPortName:
-                self.midiPort = i
-                break
+        # for i in range(0, self.mout.getPortCount()):
+        #     if self.mout.getPortName(i) == MidiManager.MidiPortName:
+        #         self.midiPort = i
+        #         break
         
-        if self.midiPort == -1:
-            raise Exception('Epic failure of finding midi channel I just opened.')
+        # if self.midiPort == -1:
+        #     raise Exception('Epic failure of finding midi channel I just opened.')
 
         self.twilio_client = TwilioRestClient(
             account=self.midiPhonConfig.TwilioAppSid,
             token=self.midiPhonConfig.TwilioApiToken
         )
+
+    def releaseMidi(self):
+        self.mout.closePort()
 
 
     def uploadMidiFile(self, filename):
@@ -160,8 +161,8 @@ class MidiManager(object):
     def addPlayer(self, phone):
         if not self.startedPlaying:
             self.startedPlaying = True
-            self.midiFile = MIDIFile(self.midiPhonConfig.numChannels)
-            for i in range(0, self.midiPhonConfig.numChannels):
+            self.midiFile = MIDIFile(self.midiPhonConfig.NumMidiChannels)
+            for i in range(0, self.midiPhonConfig.NumMidiChannels):
                 self.midiFile.addTrackName(i, 0, str(i))
                 self.midiFile.addTempo(i, 0, 60)
 
