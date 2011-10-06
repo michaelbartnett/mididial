@@ -24,7 +24,6 @@ def printget(handler):
 
 def setup(filename):
     params = {
-        # 'twilio_number': raw_input("enter phone number: "),
         'twilio_sid'   : raw_input("enter twilio app SID: "),
         'twilio_token' : raw_input("enter twilio authentication token: "), 
         'bitly_token'  : raw_input("enter bitly authentication token (OPTIONAL - press enter to skip): "),
@@ -32,9 +31,10 @@ def setup(filename):
     }
     if not params['num_channels']: params['num_channels'] = '16'
 
+    # stores each pair on a new line as key:value
     config_file = open(filename, 'wb')
     print("saving configuration...")
-    for i in params: config_file.write(i + ": " + params[i] + "\n")
+    for i in params: config_file.write(i + ":" + params[i] + "\n")
     print("saved to " + filename)
     config_file.close()
 
@@ -45,6 +45,16 @@ def setup(filename):
     config_object.NumMidiChannels = int(params['num_channels'])
 
     return config_object
+
+def readConfig(filename):
+    params = {}
+    config_file = open(filename, 'rb')
+
+    for line in config_file:
+        pair = line.rstrip('\n').split(':')
+        params[pair[0]] = params[pair[1]]
+    
+    return params
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
