@@ -23,7 +23,6 @@ def printget(handler):
     print "Done with RecurseHandler" + handler.__class__.__name__
 
 def setup(filename):
-
     params = {
         # 'twilio_number': raw_input("enter phone number: "),
         'twilio_sid'   : raw_input("enter twilio app SID: "),
