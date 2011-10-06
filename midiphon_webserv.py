@@ -38,6 +38,7 @@ def setup(filename):
     for i in params: config_file.write(i + ": " + params[i] + "\n")
     print("saved to " + filename)
     config_file.close()
+
     config_object = MidiPhonConfig()
     config_object.TwilioAppSid = params['twilio_sid']
     config_object.TwilioApiToken = params['twilio_token']
@@ -141,7 +142,6 @@ if __name__ == "__main__":
             sys.stdout.write(a + ' ')
         print ''
         sys.exit(1)
-    
 
     conf = setup('midiphon.conf')
     # conf = MidiPhonConfig()
