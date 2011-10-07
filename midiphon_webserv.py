@@ -26,6 +26,7 @@ def setup(filename):
     params = readConfig(filename)
 
     if not params:
+        lines = []
         params = {
             'twilio_sid'   : raw_input("enter twilio app SID: "),
             'twilio_token' : raw_input("enter twilio authentication token: "), 
@@ -37,9 +38,13 @@ def setup(filename):
         # stores each pair on a new line as key:value
         config_file = open(filename, 'wb')
         print("saving configuration...")
-        for i in params: config_file.write(i + ":" + params[i] + "\n")
-        print("saved to " + filename)
+        for i in params: lines.append(i + ":" + params[i] + "\n")
+        # remove linebreak at end of last line
+        lines[-1] = lines[-1].rstrip('\n')
+        for i in lines: config_file.write(i)
+        # done bitches
         config_file.close()
+        print("saved to " + filename)
 
     config_object = MidiPhonConfig()
     config_object.TwilioAppSid = params['twilio_sid']
@@ -60,7 +65,7 @@ def readConfig(filename):
 
     for line in config_file:
         pair = line.rstrip('\n').split(':')
-        params[pair[0]] = params[pair[1]]
+        params[pair[0]] = pair[1]
     
     return params
 
