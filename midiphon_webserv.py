@@ -23,20 +23,23 @@ def printget(handler):
     print "Done with RecurseHandler" + handler.__class__.__name__
 
 def setup(filename):
-    params = {
-        'twilio_sid'   : raw_input("enter twilio app SID: "),
-        'twilio_token' : raw_input("enter twilio authentication token: "), 
-        'bitly_token'  : raw_input("enter bitly authentication token (OPTIONAL - press enter to skip): "),
-        'num_channels' : raw_input("enter the number of midi channels to use (OPTIONAL - press enter to skip): "),
-    }
-    if not params['num_channels']: params['num_channels'] = '16'
+    params = readConfig(filename)
 
-    # stores each pair on a new line as key:value
-    config_file = open(filename, 'wb')
-    print("saving configuration...")
-    for i in params: config_file.write(i + ":" + params[i] + "\n")
-    print("saved to " + filename)
-    config_file.close()
+    if not params:
+        params = {
+            'twilio_sid'   : raw_input("enter twilio app SID: "),
+            'twilio_token' : raw_input("enter twilio authentication token: "), 
+            'bitly_token'  : raw_input("enter bitly authentication token (OPTIONAL - press enter to skip): "),
+            'num_channels' : raw_input("enter the number of midi channels to use (OPTIONAL - press enter to skip): "),
+        }
+        if not params['num_channels']: params['num_channels'] = '16'
+
+        # stores each pair on a new line as key:value
+        config_file = open(filename, 'wb')
+        print("saving configuration...")
+        for i in params: config_file.write(i + ":" + params[i] + "\n")
+        print("saved to " + filename)
+        config_file.close()
 
     config_object = MidiPhonConfig()
     config_object.TwilioAppSid = params['twilio_sid']
@@ -46,15 +49,23 @@ def setup(filename):
 
     return config_object
 
+
+
 def readConfig(filename):
     params = {}
-    config_file = open(filename, 'rb')
+    try:
+        config_file = open(filename, 'rb')
+    except IOError:
+        return None
 
     for line in config_file:
         pair = line.rstrip('\n').split(':')
         params[pair[0]] = params[pair[1]]
     
     return params
+
+
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -111,6 +122,8 @@ class StatusHandler(tornado.web.RequestHandler):
     def get(self):
         printget(self)
 
+
+
 class RootHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
         self.write('<h1>Hello!</h1>')
@@ -149,7 +162,7 @@ if __name__ == "__main__":
         sys.stdout.write('Error, unrecognized arguments: ')
         for a in args:
             sys.stdout.write(a + ' ')
-        print ''
+        print
         sys.exit(1)
 
     conf = setup('midiphon.conf')
