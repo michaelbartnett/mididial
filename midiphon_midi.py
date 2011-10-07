@@ -125,15 +125,17 @@ class MidiManager(object):
         mf.close()
         print "Done storing midi file"
         
-        link = self.getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
-        print 'GOT LINK: ' + link
-        self.sendBitlyLink(link)
-        print "SMS Sent!"
+        if self.midiPhonConfig.BitlyApiToken:
+            link = self.getBitlyLink('http://midiphon.bartnett.com/' + str(filename))
+            print 'GOT LINK: ' + link
+            self.sendBitlyLink(link)
+            print "SMS Sent!"
+        else:
+            print 'Not Bit.ly api token specified, not sending out the link to midi file.'
 
     def getBitlyLink(self, url):
-        global bitly_api_token
         print "Opening bitly connection"
-        connect = Connection("midiphon", bitly_api_token)
+        connect = Connection("midiphon", self.midiPhonConfig.BitlyApiToken)
         print "Shortening URL"
         short = connect.shorten(url)
         print "Done shortening URL"
@@ -190,6 +192,7 @@ class MidiManager(object):
                 f = open(fn, 'wb')
                 self.midiFile.writeFile(f)
                 f.close()
+                self.midiFile.close()
                 self.uploadMidiFile(fn)
                 
     
