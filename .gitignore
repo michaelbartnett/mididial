@@ -6,3 +6,5 @@ build
 src
 setup.py
 midiphon.conf
+midiphon-py
+fixpath.sh
