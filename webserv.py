@@ -4,6 +4,7 @@ import tornado.web
 import tornado.ioloop
 import json
 from SessionManager import SessionManager
+from twilio import twiml
 
 class TwilioHandler(tornado.web.RequestHandler):
     def initialize(self, sessionManager):
@@ -11,7 +12,9 @@ class TwilioHandler(tornado.web.RequestHandler):
     
     @tornado.web.removeslash
     def post(self, *args, **kwargs):
-        if self.request.path == '/twilio/entry':
+        print('Got Twilio request')
+        if self.request.path == '/twilio/enter':
+            print('Performing /twilio/enter')
             phone_num = self.get_argument('From')
             r = twiml.Response()
             r.say("Welcome to midi-phone. Enter your jam session's shortcode.")
@@ -19,17 +22,21 @@ class TwilioHandler(tornado.web.RequestHandler):
             self.write(r.toxml())
             
         elif self.request.path == '/twilio/recurse':
+            print('Performing /twilio/recurse')
             digits = self.get_argument('Digits')
             phone_num = self.get_argument('From')
             r = twiml.Response()
+            print('Checking the dialed digits')
             if len(digits) == 3:
+                print('3 digits dialed')
                 if self.sessionManager.addCallerToSession(digits, phone_num):
                     r.say('Press a key to play a note')
                     r.gather(action='/twilio/recurse', numDigits=1)
                 else:
                     r.say("This jam is full yo. Seventeen's a crowd")
                     r.hangup()
-            elif len(digits_dialed) == 1:
+            elif len(digits) == 1:
+                print('1 digit dialed')
                 r.say('Okay')
             
             else:
@@ -37,6 +44,8 @@ class TwilioHandler(tornado.web.RequestHandler):
                 r.hangup()
 
             self.write(r.toxml())
+        elif self.request.path == '/twilio/status':
+            pass
 
 
 
@@ -94,8 +103,8 @@ if __name__ == "__main__":
         (r"/twilio/recurse/*", TwilioHandler, dict(sessionManager=sessionManager)),
         (r"/twilio/status/*", TwilioHandler, dict(sessionManager=sessionManager)),
     ])
-    application.listen(8888)
-    print('Listening on port 8888')
+    application.listen(80)
+    print('Listening on port 80')
     try:
         tornado.ioloop.IOLoop.instance().start()
     except KeyboardInterrupt:

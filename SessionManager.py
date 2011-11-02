@@ -37,7 +37,7 @@ class SessionManager(object):
     def addNewSession(self, session_name):
         '''Creates new session and adds it to the database and collection'''
         session_id = self.db.execute_lastrowid(
-            'insert into sessions set name="{0}", created_at='.format(
+            'insert into sessions set name="{0}", created_at={1}'.format(
                 session_name, time.time()))
         session = Session(id, self.getNewShortcode())
         self.sessions[session.shortcode] = session
@@ -59,8 +59,10 @@ class SessionManager(object):
             if session.isFull():
                 return False
             session.addPlayer()
+            query = 'insert into participants set FK_session_id={0}'.format(session.session_id)
+            print('query = ' + query)
             participant_id = self.db.execute_lastrowid(
-                'insert into participants set FK_session_id={0}'.format(session.id))
+                'insert into participants set FK_session_id={0}'.format(session.session_id))
             participant = Participant(participant_id, phone_num, session)
             self.participants[phone_num] = participant
             return True
@@ -77,7 +79,7 @@ class SessionManager(object):
     def handleDigitDialed(self, phone_num, digit):
         participant = self.participants[phone_num]
         response = {
-            'participant_id':str(participant.id),
+            'participant_id':str(participant.participant_id),
             'digit':digit
             }
 
@@ -89,7 +91,7 @@ class SessionManager(object):
         participant = self.participants[phone_num]
         shortcode = participant.session.shortcode
         response = {
-            'participant_id':str(participant.id),
+            'participant_id':str(participant.participant_id),
             'digit':'H'
             }
         self.addClientResponse(shortcode, response)
@@ -116,7 +118,7 @@ class SessionManager(object):
         if not self.activeShortcodes:
             self.activeShortcodes.append(shortcode)
         else:
-            shortcode = max(self.activeShortCodes) + 1
+            shortcode = max(self.activeShortcodes) + 1
             if shortcode > 999:
                 raise Exception('Ran out of shortcodes')
             self.activeShortcodes.append(shortcode)
@@ -126,7 +128,7 @@ class SessionManager(object):
 
 class Session(object):
     def __init__(self, session_id, shortcode):
-        self.id = session_id
+        self.session_id = session_id
         self.name = ''
         self.midifile_url = ''
         self.shortcode = shortcode
@@ -143,7 +145,7 @@ class Session(object):
 
 class Participant(object):
     def __init__(self, participant_id, phone_num, session):
-        self.id = participant_id
+        self.participant_id = participant_id
         self.phone_num = phone_num
         self.midi_channel = 0
         self.session = session
