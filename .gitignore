@@ -1,6 +1,7 @@
 *.mid
 *.pyc
 *.egg
+*~
 dist
 build
 src

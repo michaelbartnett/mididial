@@ -2,24 +2,31 @@
 
 import tornado.database
 import json
+import time
 
 # JSON resopnse format for clientrequest:
 # {
-#   "participant_id": participant_id,
-#   "digit":digit
+#   "messages":[
+#     {
+#       "participant_id": '10238',
+#       "digit":'7'
+#     },
+#     ...
+#   ]
 # }
 # participant_id is the id that client will associate with midi channel
 # digit is 0-9, *, or H for hung up, or N for new participant
 # Now that's what I call versatility.
+#
+# JSON response format for neewsession
+# {
+#   "success":true/false,
+#   "shortcode":'999'
+# }
 
 class SessionManager(object):
-    def __init__(self, db_host, db_name, db_user, db_pass):
-        self.db = tornado.database.Connection(
-            db_host,
-            db_name,
-            user=db_user,
-            password=db_pass)
-        
+    def __init__(self, database):
+        self.db = database        
         self.sessions = {} # key = shortcode
         self.participants = {} # key = phone_num
         self.activeShortcodes = []
@@ -27,10 +34,11 @@ class SessionManager(object):
         self.clientResponseBuffer = {}
 	
         
-    def addNewSession(self, sessnion_name):
+    def addNewSession(self, session_name):
         '''Creates new session and adds it to the database and collection'''
         session_id = self.db.execute_lastrowid(
-            'insert into sessions set name={0}'.format(session_name))
+            'insert into sessions set name="{0}", created_at='.format(
+                session_name, time.time()))
         session = Session(id, self.getNewShortcode())
         self.sessions[session.shortcode] = session
         return session.shortcode
@@ -42,6 +50,9 @@ class SessionManager(object):
 
 
     def addCallerToSession(self, shortcode, phone_num):
+        if phone_num in self.participants:
+            return true
+
         if shortcode in self.sessions and not phone_num in self.participants:
             # send message to client
             session = self.sessions[shortcode]
@@ -52,14 +63,11 @@ class SessionManager(object):
                 'insert into participants set FK_session_id={0}'.format(session.id))
             participant = Participant(participant_id, phone_num, session)
             self.participants[phone_num] = participant
-            
-            return True
-        elif phone_num in self.participants:
-            # print('Participant {0} already active in {1}'.format(
-            #         phone_num, session.name))
             return True
         elif shortcode not in self.sessions:
             raise Exception('Invalid shortcode')
+        
+        return False
 
 
     def newClientRequest(self, shortcode, request_handler):
@@ -69,35 +77,23 @@ class SessionManager(object):
     def handleDigitDialed(self, phone_num, digit):
         participant = self.participants[phone_num]
         response = {
-            'participant_id':participant.id,
+            'participant_id':str(participant.id),
             'digit':digit
             }
-        
-        
-        
-        if shortcode in self.activeRequests:
-            request = self.activeRequests[shortcode]
-            request.handler.respondToClient(request)
-            self.activeRequests.pop(shortcode)
-            # todo: add logic for response queue
-        else:
-            pass
+
+        self.addClientResponse(shortcode, response)
+        self.flushClientResponseBuffer(shortcode)
         
 
     def handleHangup(self, phone_num):
         participant = self.participants[phone_num]
+        shortcode = participant.session.shortcode
         response = {
-            'participant_id':participant.id,
+            'participant_id':str(participant.id),
             'digit':'H'
             }
-        
-        if shortcode in self.activeRequests:
-            request = self.activeRequests[shortcode]
-            request.handler.respondToClient(request)
-            self.activeRequests.pop(shortcode)
-            # todo: add logic for response queue
-        else:
-            pass
+        self.addClientResponse(shortcode, response)
+        self.flushClientResponseBuffer(shortcode)
 
 
     def addClientResponse(self, shortcode, response):
@@ -109,17 +105,15 @@ class SessionManager(object):
 
     def flushClientResponseBuffer(self, shortcode):
         if shortcode in activeRequests and shortcode in self.clientResponseBffer:
-            request = self.activeRequests[shortcode]
-            request.respondToClient(self.clientResponseBuffer[shortcode])
+            request = self.activeRequests.pop(shortcode)
+            request.handler.respondToClient(self.clientResponseBuffer[shortcode])
             self.clientResponseBuffer[shortcode]['messages'].clear()
-            
-            
 
     
     def getNewShortcode(self):
         '''Generates a new 3-digit shortcode.'''
         shortcode = 1
-        if not self.activeShortCodes:
+        if not self.activeShortcodes:
             self.activeShortcodes.append(shortcode)
         else:
             shortcode = max(self.activeShortCodes) + 1
