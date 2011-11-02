@@ -2,48 +2,66 @@
 
 import tornado.web
 import tornado.ioloop
+import json
+from SessionManager import SessionManager
 
 class TwilioHandler(tornado.web.RequestHandler):
+    def initialize(self, sessionManager):
+        self.sessionManager = sessionManager
+    
     @tornado.web.removeslash
     def post(self, *args, **kwargs):
         if self.request.path == '/twilio/entry':
+            phone_num = self.get_argument('From')
             r = twiml.Response()
-            r.say("Welcome to midi-phone.")
-            phoneNumber = self.request.arguments["From"][0]
-            if midiManager.addPlayer(phoneNumber) == False:
-                r.say("All channels full.")
-                r.hangup()
-            else:
-                r.say('Press a key to play a note')
-                r.gather(action='/twilio/recurse', numDigits=1)
-
+            r.say("Welcome to midi-phone. Enter your jam session's shortcode.")
+            r.gather(action='/twilio/recurse', numDigits=3)
             self.write(r.toxml())
             
         elif self.request.path == '/twilio/recurse':
+            digits = self.get_argument('Digits')
+            phone_num = self.get_argument('From')
             r = twiml.Response()
-            phoneNumber = self.request.arguments['From'][0]
-            digit = self.request.arguments['Digits'][0]
-            if midiManager.playNote(phoneNumber, digit) == False:
-                r.say("You are not a valid person.")
-                r.hangup()
-            else:
+            if len(digits) == 3:
+                if self.sessionManager.addCallerToSession(digits, phone_num):
+                    r.say('Press a key to play a note')
+                    r.gather(action='/twilio/recurse', numDigits=1)
+                else:
+                    r.say("This jam is full yo. Seventeen's a crowd")
+                    r.hangup()
+            elif len(digits_dialed) == 1:
                 r.say('Okay')
-                r.gather(action='/recurse', numDigits=1)
+            
+            else:
+                r.say("These aren't the droids you're looking for.")
+                r.hangup()
 
             self.write(r.toxml())
+
 
 
 class WebHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
-        pass
+        self.write('Hello, world.')
     
 
 class ClientHandler(tornado.web.RequestHandler):
+    def initialize(self, sessionManager):
+        self.sessionManager = sessionManager
+    
     @tornado.web.asynchronous
     @tornado.web.removeslash
     def get(self, *args, **kwargs):
         if self.request.path == '/client/newsession':
-            pass
+            print('Client connected.')
+            session_name = self.get_argument('session_name', default='MyJam')
+            shortcode = self.sessionManager.addNewSession(session_name)
+            self.write(json.dumps({
+                        "success":True,
+                        "shortcode":shortcode
+                        }))
+            self.finish()
+            print('Added client with shortcode {0}'.format(shortcode))
         elif self.request.path == '/client/update':
             pass
         elif self.request.path == '/client/endsession':
@@ -55,11 +73,30 @@ class ClientHandler(tornado.web.RequestHandler):
 
 
 if __name__ == "__main__":
+    db_host = 'localhost'
+    db_name = 'midiphon_webapp_db'
+    db_user = 'midiphon_webapp'
+    db_pass = 'grantophone'
+    
+    database = tornado.database.Connection(
+            db_host,
+            db_name,
+            user=db_user,
+            password=db_pass)
+
+    sessionManager = SessionManager(database)
+    
     application = tornado.web.Application([
-            (r"/client/newsession/*", ClientHandler),
-            (r"/client/update/*", ClientHandler),
-            (r"/client/endsession/*", ClientHandler),
-            (r"/twilio/enter/*", TwilioHandler),
-            (r"/twilio/recurse/*", TwilioHandler),
-            (r"/twilio/status/*", TwilioHandler),
+        (r"/client/newsession/*", ClientHandler, dict(sessionManager=sessionManager)),
+        (r"/client/update/*", ClientHandler, dict(sessionManager=sessionManager)),
+        (r"/client/endsession/*", ClientHandler, dict(sessionManager=sessionManager)),
+        (r"/twilio/enter/*", TwilioHandler, dict(sessionManager=sessionManager)),
+        (r"/twilio/recurse/*", TwilioHandler, dict(sessionManager=sessionManager)),
+        (r"/twilio/status/*", TwilioHandler, dict(sessionManager=sessionManager)),
     ])
+    application.listen(8888)
+    print('Listening on port 8888')
+    try:
+        tornado.ioloop.IOLoop.instance().start()
+    except KeyboardInterrupt:
+        print('User quit')
