@@ -39,7 +39,7 @@ class SessionManager(object):
         session_id = self.db.execute_lastrowid(
             'insert into sessions set name="{0}", created_at={1}'.format(
                 session_name, time.time()))
-        session = Session(id, self.getNewShortcode())
+        session = Session(session_id, self.getNewShortcode())
         self.sessions[session.shortcode] = session
         return session.shortcode
         
@@ -59,6 +59,7 @@ class SessionManager(object):
             if session.isFull():
                 return False
             session.addPlayer()
+            print('Session ID is {0}'.format(session.id))
             query = 'insert into participants set FK_session_id={0}'.format(session.session_id)
             print('query = ' + query)
             participant_id = self.db.execute_lastrowid(
@@ -79,7 +80,7 @@ class SessionManager(object):
     def handleDigitDialed(self, phone_num, digit):
         participant = self.participants[phone_num]
         response = {
-            'participant_id':str(participant.participant_id),
+            'participant_id':str(participant.id),
             'digit':digit
             }
 
@@ -128,7 +129,7 @@ class SessionManager(object):
 
 class Session(object):
     def __init__(self, session_id, shortcode):
-        self.session_id = session_id
+        self.id = session_id
         self.name = ''
         self.midifile_url = ''
         self.shortcode = shortcode
@@ -145,7 +146,7 @@ class Session(object):
 
 class Participant(object):
     def __init__(self, participant_id, phone_num, session):
-        self.participant_id = participant_id
+        self.id = participant_id
         self.phone_num = phone_num
         self.midi_channel = 0
         self.session = session
