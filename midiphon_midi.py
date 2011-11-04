@@ -85,7 +85,7 @@ class PhoneMusician(object):
             
 
 class MidiManager(object):
-    MidiPortName = "MIDIPHON"
+    MidiPortName = "MIDIphon"
 
     def __init__(self, midiPhonConfig):
         super(MidiManager, self).__init__()
@@ -97,7 +97,19 @@ class MidiManager(object):
         self.mout = rtmidi.RtMidiOut()
         # self.min = rtmidi.RtMidiIn()
         # self.min.openVirtualPort(MidiManager.MidiPortName)
-        self.mout.openVirtualPort(MidiManager.MidiPortName)
+        # self.mout.openVirtualPort(MidiManager.MidiPortName)
+        self.midiPort = -1
+        for i in xrange(0, self.mout.getPortCount()):
+            name = self.mout.getPortName(i)
+            print('Port {0} is named {1}'.format(i, name))
+            if name == ('IAC Driver ' + MidiManager.MidiPortName):
+                self.midiPort = i
+                break
+
+        if self.midiPort == -1:
+            raise Exception("You need to have a virtual midi port named 'MIDIphon'")
+
+        self.mout.openPort(self.midiPort)
         self.startedPlaying = False
         self.initialTime = time.clock()
         # for i in range(0, self.mout.getPortCount()):
